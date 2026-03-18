@@ -47,7 +47,7 @@ function App() {
   const pct = totalPages > 0 ? (progressPage / totalPages) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
       <TopBar jobStatus={jobStatus} onChooseFile={handleChooseFile} />
 
       {showProgress && (
@@ -93,14 +93,14 @@ function App() {
         </div>
       )}
 
-      <div className="flex-1 px-6 py-4 min-h-0">
+      <div className="flex-1 px-6 py-4 min-h-0 overflow-hidden">
         <PanelGroup
           direction={isNarrow ? "vertical" : "horizontal"}
           className="h-full min-h-0 rounded-xl border border-slate-800 overflow-hidden"
           autoSaveId="docstruct-layout"
         >
           <Panel defaultSize={50} minSize={25}>
-            <div className="h-full min-h-0 overflow-auto bg-slate-950/20">
+            <div className="h-full min-h-0 overflow-hidden bg-slate-950/20">
               <DocumentViewer />
             </div>
           </Panel>
@@ -108,7 +108,7 @@ function App() {
           <PanelResizeHandle className="w-1 bg-slate-800 hover:bg-purple-400/60 transition-colors cursor-col-resize" />
 
           <Panel defaultSize={50} minSize={25}>
-            <div className="h-full min-h-0 overflow-auto bg-slate-950/20">
+            <div className="h-full min-h-0 overflow-hidden bg-slate-950/20">
               <OutputViewer />
             </div>
           </Panel>

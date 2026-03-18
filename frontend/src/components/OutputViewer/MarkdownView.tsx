@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useDocStructStore } from "../../store/useDocStructStore";
@@ -61,8 +61,31 @@ function Heading({
 
 export function MarkdownView({ markdown }: { markdown: string }) {
   const jobId = useDocStructStore((s) => s.jobId);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast("Copied to clipboard");
+      window.setTimeout(() => setToast(null), 2000);
+    } catch {
+      setToast("Copy failed");
+      window.setTimeout(() => setToast(null), 2000);
+    }
+  };
+
   return (
-    <div className="h-full overflow-auto p-4">
+    <div className="min-h-full p-4">
+      <div className="flex items-center justify-end mb-2">
+        <button
+          type="button"
+          onClick={() => void copy(markdown)}
+          className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-800 transition"
+        >
+          Copy MD
+        </button>
+      </div>
+
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -89,6 +112,12 @@ export function MarkdownView({ markdown }: { markdown: string }) {
       >
         {markdown}
       </ReactMarkdown>
+
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

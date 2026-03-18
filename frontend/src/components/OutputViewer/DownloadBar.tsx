@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDocStructStore } from "../../store/useDocStructStore";
 
 interface DownloadBarProps {
@@ -19,7 +19,8 @@ function downloadText(filename: string, text: string) {
 
 export function DownloadBar({ markdownText }: DownloadBarProps) {
   const { documentTree } = useDocStructStore();
-  const [toast, setToast] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const baseFilename = useMemo(() => {
     if (!documentTree) return "docstruct";
@@ -32,53 +33,53 @@ export function DownloadBar({ markdownText }: DownloadBarProps) {
     return JSON.stringify({ document: documentTree }, null, 2);
   }, [documentTree]);
 
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setToast("Copied to clipboard");
-      window.setTimeout(() => setToast(null), 2000);
-    } catch {
-      setToast("Copy failed");
-      window.setTimeout(() => setToast(null), 2000);
-    }
-  };
+  useEffect(() => {
+    if (!open) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!rootRef.current) return;
+      const target = e.target as Node | null;
+      if (target && !rootRef.current.contains(target)) setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [open]);
 
   return (
-    <div className="flex items-center justify-between gap-3 flex-wrap">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
-        onClick={() => downloadText(`${baseFilename}.docstruct.json`, jsonText)}
+        onClick={() => setOpen((v) => !v)}
         className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-800 transition"
       >
-        Download JSON
+        Download <span className="text-[10px] opacity-70 ml-1">v</span>
       </button>
-      <button
-        type="button"
-        onClick={() => downloadText(`${baseFilename}.docstruct.md`, markdownText)}
-        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-800 transition"
-      >
-        Download MD
-      </button>
-      <button
-        type="button"
-        onClick={() => void copy(jsonText)}
-        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-800 transition"
-      >
-        Copy JSON
-      </button>
-      <button
-        type="button"
-        onClick={() => void copy(markdownText)}
-        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-800 transition"
-      >
-        Copy MD
-      </button>
-      </div>
 
-      {toast && (
-        <div className="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50">
-          {toast}
+      {open && (
+        <div className="absolute right-0 mt-2 min-w-[170px] rounded-md border border-slate-700 bg-slate-900 shadow-lg z-20 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => {
+              downloadText(
+                `${baseFilename}.docstruct.json`,
+                jsonText
+              );
+              setOpen(false);
+            }}
+            className="w-full text-left px-3 py-2 text-xs text-slate-100 hover:bg-slate-800 transition"
+          >
+            Download JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              downloadText(`${baseFilename}.docstruct.md`, markdownText);
+              setOpen(false);
+            }}
+            className="w-full text-left px-3 py-2 text-xs text-slate-100 hover:bg-slate-800 transition"
+          >
+            Download MD
+          </button>
         </div>
       )}
     </div>

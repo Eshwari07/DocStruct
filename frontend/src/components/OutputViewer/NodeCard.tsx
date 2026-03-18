@@ -89,13 +89,7 @@ export function NodeCard({ node }: { node: DocNode }) {
         </span>
       </div>
 
-      {hasChildren && isExpanded ? (
-        <div className="ml-0 space-y-1">
-          {node.children.map((child) => (
-            <NodeCard key={child.id} node={child} />
-          ))}
-        </div>
-      ) : null}
+      {/* Children are rendered by the parent list (flattened visible nodes). */}
     </div>
   );
 }

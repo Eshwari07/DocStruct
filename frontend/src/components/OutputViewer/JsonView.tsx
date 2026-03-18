@@ -16,10 +16,16 @@ function collectExpandableIds(nodes: DocNode[]): string[] {
 }
 
 export function JsonView({ documentTree }: { documentTree: DocumentTree }) {
-  const { expandedNodeIds, expandAll, collapseAll, toggleExpanded } = useDocStructStore();
+  const { expandedNodeIds, expandAll, collapseAll } = useDocStructStore();
   const selectedNodeId = useDocStructStore((s) => s.selectedNodeId);
 
   const [rawMode, setRawMode] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const jsonText = useMemo(
+    () => JSON.stringify(documentTree, null, 2),
+    [documentTree]
+  );
 
   const visibleNodes = useMemo(() => {
     if (rawMode) return [];
@@ -56,13 +62,29 @@ export function JsonView({ documentTree }: { documentTree: DocumentTree }) {
 
   if (rawMode) {
     return (
-      <div className="h-full overflow-auto p-4">
+      <div className="p-4">
         <pre className="text-[11px] leading-relaxed text-slate-200 whitespace-pre-wrap">
           {JSON.stringify(documentTree, null, 2)}
         </pre>
+        {toast && (
+          <div className="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+            {toast}
+          </div>
+        )}
       </div>
     );
   }
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast("Copied to clipboard");
+      window.setTimeout(() => setToast(null), 2000);
+    } catch {
+      setToast("Copy failed");
+      window.setTimeout(() => setToast(null), 2000);
+    }
+  };
 
   const controls = (
     <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
@@ -80,12 +102,21 @@ export function JsonView({ documentTree }: { documentTree: DocumentTree }) {
           Collapse all
         </button>
       </div>
-      <button
-        className="text-xs text-slate-300 hover:text-slate-50 underline"
-        onClick={() => setRawMode(true)}
-      >
-        Raw JSON
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          className="text-xs text-slate-300 hover:text-slate-50 underline"
+          onClick={() => setRawMode(true)}
+        >
+          Raw JSON
+        </button>
+        <button
+          type="button"
+          onClick={() => void copy(jsonText)}
+          className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 hover:bg-slate-800 transition"
+        >
+          Copy JSON
+        </button>
+      </div>
     </div>
   );
 
@@ -102,7 +133,7 @@ export function JsonView({ documentTree }: { documentTree: DocumentTree }) {
     return (
       <div className="h-full flex flex-col">
         {controls}
-        <div ref={containerRef} className="flex-1">
+        <div ref={containerRef} className="flex-1 min-h-0">
           <FixedSizeList
             ref={listRef as any}
             height={listHeight}
@@ -113,6 +144,11 @@ export function JsonView({ documentTree }: { documentTree: DocumentTree }) {
             {Row}
           </FixedSizeList>
         </div>
+        {toast && (
+          <div className="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+            {toast}
+          </div>
+        )}
       </div>
     );
   }
@@ -120,11 +156,16 @@ export function JsonView({ documentTree }: { documentTree: DocumentTree }) {
   return (
     <div className="h-full flex flex-col">
       {controls}
-      <div className="flex-1 overflow-auto p-2 space-y-1">
+      <div className="flex-1 min-h-0 p-2 space-y-1">
         {visibleNodes.map((item) => (
           <NodeCard key={item.node.id} node={item.node} />
         ))}
       </div>
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
