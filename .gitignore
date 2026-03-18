@@ -1,0 +1,59 @@
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Windows / PowerShell
+$RECYCLE.BIN/
+*.lnk
+
+# Logs
+*.log
+logs/
+
+# Env files / secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+.nox/
+.tox/
+.venv/
+venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+
+# IDEs / editors
+.vscode/
+.idea/
+*.iml
+
+# Cursor
+.cursor/
+
+# Git
+*.orig
