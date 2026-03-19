@@ -95,19 +95,55 @@ export function MarkdownView({ markdown }: { markdown: string }) {
           h4: ({ children }) => <Heading level={4}>{children}</Heading>,
           h5: ({ children }) => <Heading level={5}>{children}</Heading>,
           h6: ({ children }) => <Heading level={6}>{children}</Heading>,
+          p: ({ children }) => (
+            <p className="text-sm text-slate-300 leading-relaxed my-2">{children}</p>
+          ),
+          table: ({ children }) => (
+            <div className="my-4 overflow-x-auto rounded-lg border border-slate-700">
+              <table className="w-full text-sm text-left border-collapse">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-slate-800/80 text-slate-200 text-xs uppercase tracking-wider">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="divide-y divide-slate-700/50">{children}</tbody>
+          ),
+          tr: ({ children }) => (
+            <tr className="hover:bg-slate-800/40 transition-colors">{children}</tr>
+          ),
+          th: ({ children }) => (
+            <th className="px-3 py-2 font-semibold border-b border-slate-600 text-slate-200 whitespace-nowrap">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3 py-2 text-slate-300 border-b border-slate-700/30">
+              {children}
+            </td>
+          ),
           img: ({ src, alt }) => {
             const s = typeof src === "string" ? src : "";
             const resolved =
               jobId && s.startsWith("assets/") ? getAssetUrl(jobId, s) : s;
-            // eslint-disable-next-line jsx-a11y/alt-text
             return (
               <img
                 src={resolved}
                 alt={alt ?? ""}
-                className="max-w-full rounded-lg border border-slate-800"
+                className="max-w-full rounded-lg border border-slate-800 my-3"
               />
             );
-          }
+          },
+          strong: ({ children }) => (
+            <strong className="font-semibold text-slate-100">{children}</strong>
+          ),
+          em: ({ children }) => (
+            <em className="text-slate-400 italic">{children}</em>
+          ),
         }}
       >
         {markdown}

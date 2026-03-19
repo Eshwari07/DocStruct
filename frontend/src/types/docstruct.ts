@@ -18,6 +18,16 @@ export interface ImageRef {
   path: string;
 }
 
+export interface TableBlock {
+  table_id: string;
+  caption: string;
+  page: number;
+  headers: string[];
+  rows: string[][];
+  markdown: string;
+  extraction_method: string;
+}
+
 export interface DocNode {
   id: string;
   section_id: string;
@@ -28,6 +38,7 @@ export interface DocNode {
   pages: PageRange | null;
   confidence: number;
   images: ImageRef[];
+  tables: TableBlock[];
   children: DocNode[];
 }
 

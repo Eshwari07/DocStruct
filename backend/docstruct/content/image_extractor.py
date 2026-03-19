@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import fitz  # pymupdf
 
@@ -21,11 +22,55 @@ _MIN_AREA_RATIO = 0.015   # 1.5% of page — filters bullets/borders
 _MIN_DRAWING_PATHS = 8
 # Minimum fraction of page area covered by vector drawings
 _MIN_VECTOR_AREA_RATIO = 0.04
+# IoU threshold above which a diagram region is considered "already a table"
+_TABLE_OVERLAP_THRESHOLD = 0.40
+
+
+def _rect_iou(a: fitz.Rect, b: Tuple[float, float, float, float]) -> float:
+    """Intersection-over-union between a fitz.Rect and a raw bbox tuple."""
+    bx0, by0, bx1, by1 = b
+    ix0 = max(a.x0, bx0)
+    iy0 = max(a.y0, by0)
+    ix1 = min(a.x1, bx1)
+    iy1 = min(a.y1, by1)
+    if ix1 <= ix0 or iy1 <= iy0:
+        return 0.0
+    inter = (ix1 - ix0) * (iy1 - iy0)
+    area_a = a.width * a.height
+    area_b = (bx1 - bx0) * (by1 - by0)
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _overlaps_table(
+    rect: fitz.Rect,
+    table_bboxes: List[Tuple[float, float, float, float]],
+) -> bool:
+    """Return True if rect significantly overlaps any known table bbox."""
+    return any(
+        _rect_iou(rect, tb) >= _TABLE_OVERLAP_THRESHOLD
+        for tb in table_bboxes
+    )
 
 
 def extract_images_from_pdf(
-    tree: DocumentTree, file_path: Path, output_dir: Path
+    tree: DocumentTree,
+    file_path: Path,
+    output_dir: Path,
+    table_bboxes: Optional[Dict[int, List[Tuple[float, float, float, float]]]] = None,
 ) -> None:
+    """
+    Extract embedded raster images and vector diagrams from a PDF and attach
+    them as ImageRef objects to the corresponding DocNodes.
+
+    table_bboxes (optional): mapping of page_num → list of (x0,y0,x1,y1)
+        tuples returned by extract_tables_from_pdf().  Any vector-diagram
+        region that substantially overlaps a known table bbox is skipped to
+        avoid re-capturing table borders as a "diagram" image.
+    """
+    if table_bboxes is None:
+        table_bboxes = {}
+
     output_dir.mkdir(parents=True, exist_ok=True)
     doc = fitz.open(str(file_path))
     try:
@@ -33,6 +78,7 @@ def extract_images_from_pdf(
             page = doc.load_page(page_num - 1)
             page_rect = page.rect
             page_area = page_rect.width * page_rect.height
+            page_table_bboxes = table_bboxes.get(page_num, [])
 
             target = _find_deepest_node_for_page(tree, page_num)
             if not target:
@@ -99,6 +145,14 @@ def extract_images_from_pdf(
 
             diag_area = diagram_rect.width * diagram_rect.height
             if page_area > 0 and diag_area / page_area < _MIN_AREA_RATIO:
+                continue
+
+            # Skip if this vector region is already claimed by a table
+            if page_table_bboxes and _overlaps_table(diagram_rect, page_table_bboxes):
+                logger.debug(
+                    "Skipping vector diagram on page %d — overlaps a table region",
+                    page_num,
+                )
                 continue
 
             try:

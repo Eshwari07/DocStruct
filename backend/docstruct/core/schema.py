@@ -35,6 +35,29 @@ class ImageRef:
 
 
 @dataclass
+class TableBlock:
+    """Structured representation of a single extracted table."""
+    table_id: str                                      # e.g. "p3_t1"
+    caption: str = ""                                  # e.g. "Table 1: Revenue Summary"
+    page: int = 0                                      # physical page number
+    headers: List[str] = field(default_factory=list)   # first row treated as headers
+    rows: List[List[str]] = field(default_factory=list) # data rows (excluding header)
+    markdown: str = ""                                 # pre-computed GFM table string
+    extraction_method: str = ""                        # "lines", "text", "mixed"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "table_id": self.table_id,
+            "caption": self.caption,
+            "page": self.page,
+            "headers": self.headers,
+            "rows": self.rows,
+            "markdown": self.markdown,
+            "extraction_method": self.extraction_method,
+        }
+
+
+@dataclass
 class PageRange:
     physical_start: int
     physical_end: int
@@ -49,6 +72,7 @@ class DocNode:
     pages: PageRange | None = None
     confidence: float = 1.0
     images: List[ImageRef] = field(default_factory=list)
+    tables: List[TableBlock] = field(default_factory=list)
     children: List["DocNode"] = field(default_factory=list)
 
     # Assigned during finalisation
@@ -111,6 +135,7 @@ class DocNode:
                 }
                 for img in self.images
             ],
+            "tables": [tbl.to_dict() for tbl in self.tables],
             "children": [child.to_dict() for child in self.children],
         }
 

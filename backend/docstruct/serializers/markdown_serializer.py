@@ -44,6 +44,21 @@ def _node_to_md(node: DocNode) -> List[str]:
         lines.append(node.text.strip())
         lines.append("")
 
+    # Render structured tables extracted from this node's page range
+    for tbl in node.tables:
+        if not tbl.markdown:
+            continue
+        # Header line: caption (if any) or generic label, plus provenance
+        if tbl.caption:
+            header = f"**{tbl.caption}**"
+        else:
+            header = f"**Table {tbl.table_id}**"
+        meta = f"*(p.{tbl.page}, {tbl.extraction_method} strategy)*"
+        lines.append(f"{header} {meta}")
+        lines.append("")
+        lines.append(tbl.markdown)
+        lines.append("")
+
     for img in node.images:
         if img.path:
             label = img.label or img.caption or "image"
