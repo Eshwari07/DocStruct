@@ -201,7 +201,7 @@ def extract_tables_from_pdf(
                             )
                             img_fname = f"{table_id}.png"
                             pix.save(str(output_dir / img_fname))
-                            block.path = f"assets/tables/{img_fname}"
+                            block.image_path = f"assets/tables/{img_fname}"
                     except Exception as exc:
                         logger.debug(
                             "Failed to render table image %s page=%d: %s",

@@ -1,5 +1,5 @@
 export type SourceFormat = "pdf" | "docx" | "html" | "markdown" | "epub" | "pptx" | "image";
-export type ExtractionPath = "fast" | "slow" | "mixed";
+export type ExtractionPath = "fast" | "slow" | "mixed" | "vlm";
 
 export type NodeType = "root" | "parent" | "child";
 export type JobStatus = "idle" | "uploading" | "processing" | "complete" | "error";
@@ -13,9 +13,12 @@ export interface PageRange {
 }
 
 export interface ImageRef {
+  image_id: string;
   label: string;
   caption: string;
   path: string;
+  page: number;
+  image_type: string;
 }
 
 export interface TableBlock {
@@ -25,7 +28,7 @@ export interface TableBlock {
   headers: string[];
   rows: string[][];
   markdown: string;
-  extraction_method: string;
+  image_path: string;
 }
 
 export interface DocNode {

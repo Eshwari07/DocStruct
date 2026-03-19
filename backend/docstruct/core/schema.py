@@ -15,6 +15,7 @@ class ExtractionPath(str, Enum):
     FAST = "fast"
     SLOW = "slow"
     MIXED = "mixed"
+    VLM = "vlm"
 
 
 class SourceFormat(str, Enum):
@@ -29,19 +30,21 @@ class SourceFormat(str, Enum):
 
 @dataclass
 class ImageRef:
+    image_id: str = ""
     label: str = ""
     caption: str = ""
     path: str = ""
-    # Positional/provenance data (PDF coordinate space)
     page: int = 0
-    y0: float = 0.0
-    y1: float = 0.0
-    bbox: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
-
-    # Image metadata for downstream consumers
     image_type: str = ""  # "raster" | "vector"
-    width_px: int = 0
-    height_px: int = 0
+
+    # Internal pipeline fields — used for spatial logic, not serialized to JSON
+    y0: float = field(default=0.0, repr=False, compare=False)
+    y1: float = field(default=0.0, repr=False, compare=False)
+    bbox: tuple[float, float, float, float] = field(
+        default=(0.0, 0.0, 0.0, 0.0), repr=False, compare=False
+    )
+    width_px: int = field(default=0, repr=False, compare=False)
+    height_px: int = field(default=0, repr=False, compare=False)
 
 
 _IMG_MARKER_PREFIX = "{{IMG:"
@@ -80,13 +83,11 @@ class TableBlock:
     headers: List[str] = field(default_factory=list)   # first row treated as headers
     rows: List[List[str]] = field(default_factory=list) # data rows (excluding header)
     markdown: str = ""                                 # pre-computed GFM table string
-    extraction_method: str = ""                        # "lines", "text", "mixed"
-    # Rendered table image (authoritative for visual fidelity in tricky PDFs).
-    # Stored as a path relative to the API asset root, e.g. "assets/tables/p5_t1.png".
-    path: str = ""
-    # Whether structured extraction looks trustworthy enough for GFM rendering.
-    # When False, markdown serializer will fall back to the image.
-    is_valid_table: bool = True
+    image_path: str = ""                               # e.g. "assets/tables/p5_t1.png"
+
+    # Internal pipeline fields — not serialized to JSON
+    extraction_method: str = field(default="", repr=False, compare=False)
+    is_valid_table: bool = field(default=True, repr=False, compare=False)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -96,9 +97,7 @@ class TableBlock:
             "headers": self.headers,
             "rows": self.rows,
             "markdown": self.markdown,
-            "extraction_method": self.extraction_method,
-            "path": self.path,
-            "is_valid_table": self.is_valid_table,
+            "image_path": self.image_path,
         }
 
 
@@ -174,16 +173,12 @@ class DocNode:
             "confidence": float(self.confidence),
             "images": [
                 {
+                    "image_id": img.image_id,
                     "label": img.label,
                     "caption": img.caption,
                     "path": img.path,
                     "page": img.page,
-                    "y0": img.y0,
-                    "y1": img.y1,
-                    "bbox": list(img.bbox),
                     "image_type": img.image_type,
-                    "width_px": img.width_px,
-                    "height_px": img.height_px,
                 }
                 for img in self.images
             ],

@@ -21,43 +21,42 @@ def _frontmatter(tree: DocumentTree) -> str:
     )
 
 
-def _node_to_md(node: DocNode) -> List[str]:
+def _node_to_md(node: DocNode, *, include_metadata: bool = False) -> List[str]:
     lines: List[str] = []
     hashes = "#" * min(node.depth, 6)
     lines.append(f"{hashes} {node.section_id} · {node.title}")
 
-    if node.pages is not None:
-        page_start = node.pages.physical_start
-        page_end = node.pages.physical_end
-    else:
-        page_start = ""
-        page_end = ""
+    if include_metadata:
+        if node.pages is not None:
+            page_start = node.pages.physical_start
+            page_end = node.pages.physical_end
+        else:
+            page_start = ""
+            page_end = ""
 
-    lines.append(
-        f"<!-- id:{node.id} "
-        f"pages:{page_start}-{page_end} "
-        f"confidence:{node.confidence:.2f} "
-        f"type:{node.node_type.value} -->"
-    )
+        lines.append(
+            f"<!-- id:{node.id} "
+            f"pages:{page_start}-{page_end} "
+            f"confidence:{node.confidence:.2f} "
+            f"type:{node.node_type.value} -->"
+        )
+
     lines.append("")
 
     if node.text.strip():
         lines.append(_render_text_with_images(node.text).strip())
         lines.append("")
 
-    # Render structured tables extracted from this node's page range
     for tbl in node.tables:
-        if not tbl.markdown:
-            # We'll handle fallback rendering further below.
-            pass
-
-        # Header line: caption (if any) or generic label, plus provenance
         if tbl.caption:
             header = f"**{tbl.caption}**"
         else:
             header = f"**Table {tbl.table_id}**"
-        meta = f"*(p.{tbl.page}, {tbl.extraction_method} strategy)*"
-        lines.append(f"{header} {meta}")
+        if include_metadata:
+            meta = f"*(p.{tbl.page}, {tbl.extraction_method} strategy)*"
+            lines.append(f"{header} {meta}")
+        else:
+            lines.append(header)
         lines.append("")
 
         if tbl.is_valid_table and tbl.markdown:
@@ -65,17 +64,13 @@ def _node_to_md(node: DocNode) -> List[str]:
             lines.append("")
             continue
 
-        # Structured markdown wasn't trustworthy; fall back to rendered image.
-        if tbl.path:
+        if tbl.image_path:
             label = tbl.caption or tbl.table_id
-            lines.append(f"![{label}]({tbl.path})")
+            lines.append(f"![{label}]({tbl.image_path})")
             lines.append("")
-
-        # If we don't have either markdown or an image, we omit representation.
 
     used_filenames = {m.group(1) for m in IMG_MARKER_RE.finditer(node.text or "")}
 
-    # Only render images not already represented by inline markers.
     remaining_images = []
     for img in node.images:
         if not img.path:
@@ -93,15 +88,15 @@ def _node_to_md(node: DocNode) -> List[str]:
             lines.append("")
 
     for child in node.children:
-        lines.extend(_node_to_md(child))
+        lines.extend(_node_to_md(child, include_metadata=include_metadata))
 
     return lines
 
 
-def to_markdown(tree: DocumentTree) -> str:
+def to_markdown(tree: DocumentTree, *, include_metadata: bool = False) -> str:
     parts: List[str] = [_frontmatter(tree), ""]
     for node in tree.nodes:
-        parts.extend(_node_to_md(node))
+        parts.extend(_node_to_md(node, include_metadata=include_metadata))
     return "\n".join(parts)
 
 

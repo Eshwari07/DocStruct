@@ -9,6 +9,9 @@ import mimetypes
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -79,19 +82,25 @@ def _run_extraction(job_id: str) -> None:
     tmp_dir = Path(job["tmp_dir"])
     start = time.time()
 
+    def on_page_complete(current: int, total: int) -> None:
+        jobs[job_id]["progress_page"] = current
+        jobs[job_id]["total_pages"] = total
+        jobs[job_id]["elapsed_seconds"] = time.time() - start
+
     try:
         import fitz
 
-        # Peek at page count before starting so the progress bar has
-        # a denominator immediately.
         try:
             with fitz.open(str(file_path)) as _doc:
                 jobs[job_id]["total_pages"] = _doc.page_count
         except Exception:
-            # non-PDF or unreadable — denominator stays 0
             pass
 
-        tree = local_pipeline.process(file_path, artifact_dir=tmp_dir)
+        tree = local_pipeline.process(
+            file_path,
+            artifact_dir=tmp_dir,
+            progress_callback=on_page_complete,
+        )
         elapsed_seconds = time.time() - start
 
         document = tree.to_dict().get("document", tree.to_dict())
@@ -101,6 +110,7 @@ def _run_extraction(job_id: str) -> None:
         jobs[job_id]["progress_page"] = tree.total_pages
         jobs[job_id]["total_pages"] = tree.total_pages
         jobs[job_id]["elapsed_seconds"] = elapsed_seconds
+        jobs[job_id]["extraction_path"] = tree.extraction_path.value
         jobs[job_id]["result"] = {
             "document": document,
             "markdown": markdown,
@@ -177,6 +187,7 @@ async def status(job_id: str):
         "progress_page": int(job.get("progress_page", 0)),
         "total_pages": int(job.get("total_pages", 0)),
         "elapsed_seconds": float(job.get("elapsed_seconds", 0.0)),
+        "extraction_path": job.get("extraction_path", "unknown"),
     }
 
 

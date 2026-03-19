@@ -116,9 +116,7 @@ export function NodeCard({ node }: { node: DocNode }) {
                 <span className="font-medium text-slate-100">
                   {tbl.caption || `Table ${tbl.table_id}`}
                 </span>
-                <span className="text-slate-500">
-                  p.{tbl.page} · {tbl.extraction_method}
-                </span>
+                <span className="text-slate-500">p.{tbl.page}</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px] border-collapse">

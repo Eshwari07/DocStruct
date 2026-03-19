@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
+
+import fitz
 
 from docstruct.core.config import DocStructConfig
-from docstruct.core.schema import DocumentTree, SourceFormat
+from docstruct.core.schema import DocumentTree, ExtractionPath, SourceFormat
 from docstruct.parsers.base import BaseParser
 from docstruct.parsers.pdf_parser import PdfParser
 from docstruct.parsers.docx_parser import DocxParser
@@ -14,6 +18,23 @@ from docstruct.parsers.pptx_parser import PptxParser
 from docstruct.content.image_extractor import extract_images_from_pdf
 from docstruct.content.pdf_table_extractor import extract_tables_from_pdf
 
+logger = logging.getLogger(__name__)
+
+
+def _pdf_has_usable_outline(file_path: Path) -> bool:
+    """Return True if the PDF has at least 2 TOC / bookmark entries."""
+    try:
+        with fitz.open(str(file_path)) as doc:
+            toc = doc.get_toc(simple=True)
+            return len(toc) >= 2
+    except Exception:
+        return False
+
+
+def _vlm_available() -> bool:
+    """Return True if an OpenRouter API key is configured."""
+    return bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
+
 
 class DocStructPipeline:
     """
@@ -21,7 +42,7 @@ class DocStructPipeline:
 
     Responsibilities:
     - Detect source format from file extension
-    - Route to the appropriate parser
+    - Route to the appropriate parser (fast / slow / VLM)
     - Return a finalised DocumentTree
     """
 
@@ -36,6 +57,12 @@ class DocStructPipeline:
         ".epub": SourceFormat.EPUB,
         ".pptx": SourceFormat.PPTX,
         ".ppt": SourceFormat.PPTX,
+        # Image formats — VLM path only
+        ".png": SourceFormat.IMAGE,
+        ".jpg": SourceFormat.IMAGE,
+        ".jpeg": SourceFormat.IMAGE,
+        ".tiff": SourceFormat.IMAGE,
+        ".tif": SourceFormat.IMAGE,
     }
 
     def process(
@@ -44,17 +71,50 @@ class DocStructPipeline:
         *,
         artifact_dir: Optional[Path] = None,
         config: Optional[DocStructConfig] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> DocumentTree:
         path = Path(file_path)
         fmt = self._detect_format(path)
+        use_vlm = False
+
+        if fmt == SourceFormat.IMAGE:
+            if not _vlm_available():
+                raise ValueError(
+                    "Image files require VLM processing but OPENROUTER_API_KEY is not set."
+                )
+            use_vlm = True
+
+        elif fmt == SourceFormat.PDF:
+            has_outline = _pdf_has_usable_outline(path)
+            if not has_outline and _vlm_available():
+                logger.info("PDF has no usable outline — routing to VLM path.")
+                use_vlm = True
+            elif not has_outline:
+                logger.warning(
+                    "PDF has no outline and VLM is unavailable — falling back to heuristic slow path."
+                )
+
+        if use_vlm:
+            from docstruct.parsers.vlm_parser import VlmParser
+            parser = VlmParser(
+                path,
+                source_format=fmt,
+                progress_callback=progress_callback,
+            )
+            tree = parser.parse()
+
+            if fmt == SourceFormat.PDF and artifact_dir is not None:
+                tables_dir = artifact_dir / "assets" / "tables"
+                extract_tables_from_pdf(tree, path, output_dir=tables_dir)
+
+            return tree
+
         parser = self._get_parser(fmt, path, config=config)
         tree = parser.parse()
+
         if fmt == SourceFormat.PDF and artifact_dir is not None:
             assets_images_dir = artifact_dir / "assets" / "images"
             tables_dir = artifact_dir / "assets" / "tables"
-            # Tables must be extracted first so their bounding boxes can be
-            # passed to the image extractor, preventing table borders from
-            # being re-captured as vector diagram images.
             table_bboxes = extract_tables_from_pdf(
                 tree, path, output_dir=tables_dir
             )
