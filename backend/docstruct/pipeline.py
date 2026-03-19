@@ -50,12 +50,17 @@ class DocStructPipeline:
         parser = self._get_parser(fmt, path, config=config)
         tree = parser.parse()
         if fmt == SourceFormat.PDF and artifact_dir is not None:
-            assets_dir = artifact_dir / "assets"
+            assets_images_dir = artifact_dir / "assets" / "images"
+            tables_dir = artifact_dir / "assets" / "tables"
             # Tables must be extracted first so their bounding boxes can be
             # passed to the image extractor, preventing table borders from
             # being re-captured as vector diagram images.
-            table_bboxes = extract_tables_from_pdf(tree, path)
-            extract_images_from_pdf(tree, path, assets_dir, table_bboxes=table_bboxes)
+            table_bboxes = extract_tables_from_pdf(
+                tree, path, output_dir=tables_dir
+            )
+            extract_images_from_pdf(
+                tree, path, assets_images_dir, table_bboxes=table_bboxes
+            )
         return tree
 
     def _detect_format(self, path: Path) -> SourceFormat:

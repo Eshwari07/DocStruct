@@ -32,6 +32,43 @@ class ImageRef:
     label: str = ""
     caption: str = ""
     path: str = ""
+    # Positional/provenance data (PDF coordinate space)
+    page: int = 0
+    y0: float = 0.0
+    y1: float = 0.0
+    bbox: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+
+    # Image metadata for downstream consumers
+    image_type: str = ""  # "raster" | "vector"
+    width_px: int = 0
+    height_px: int = 0
+
+
+_IMG_MARKER_PREFIX = "{{IMG:"
+_IMG_MARKER_SUFFIX = "}}"
+
+
+def _strip_img_markers_from_text(text: str) -> str:
+    """
+    Remove internal inline image markers from text before JSON serialization.
+
+    We keep markers in markdown generation so the serializer can replace them
+    with real `![...](...)` tags, but JSON should not contain them.
+    """
+    if _IMG_MARKER_PREFIX not in text:
+        return text
+
+    # Marker format: {{IMG:<filename>|<label>|<caption>}}
+    # We remove the whole marker including contents.
+    out = text
+    start = out.find(_IMG_MARKER_PREFIX)
+    while start != -1:
+        end = out.find(_IMG_MARKER_SUFFIX, start + len(_IMG_MARKER_PREFIX))
+        if end == -1:
+            break
+        out = out[:start] + out[end + len(_IMG_MARKER_SUFFIX) :]
+        start = out.find(_IMG_MARKER_PREFIX)
+    return out
 
 
 @dataclass
@@ -44,6 +81,12 @@ class TableBlock:
     rows: List[List[str]] = field(default_factory=list) # data rows (excluding header)
     markdown: str = ""                                 # pre-computed GFM table string
     extraction_method: str = ""                        # "lines", "text", "mixed"
+    # Rendered table image (authoritative for visual fidelity in tricky PDFs).
+    # Stored as a path relative to the API asset root, e.g. "assets/tables/p5_t1.png".
+    path: str = ""
+    # Whether structured extraction looks trustworthy enough for GFM rendering.
+    # When False, markdown serializer will fall back to the image.
+    is_valid_table: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -54,6 +97,8 @@ class TableBlock:
             "rows": self.rows,
             "markdown": self.markdown,
             "extraction_method": self.extraction_method,
+            "path": self.path,
+            "is_valid_table": self.is_valid_table,
         }
 
 
@@ -112,7 +157,7 @@ class DocNode:
             "depth": self.depth,
             "node_type": self.node_type.value,
             "title": self.title,
-            "text": self.text,
+            "text": _strip_img_markers_from_text(self.text),
             "pages": {
                 "physical_start": self.pages.physical_start if self.pages else None,
                 "physical_end": self.pages.physical_end if self.pages else None,
@@ -132,6 +177,13 @@ class DocNode:
                     "label": img.label,
                     "caption": img.caption,
                     "path": img.path,
+                    "page": img.page,
+                    "y0": img.y0,
+                    "y1": img.y1,
+                    "bbox": list(img.bbox),
+                    "image_type": img.image_type,
+                    "width_px": img.width_px,
+                    "height_px": img.height_px,
                 }
                 for img in self.images
             ],
@@ -169,6 +221,10 @@ class Span:
 
     # Source metadata
     source_format: str
+
+    # Layout (set by extractor)
+    block_index: int = 0
+    column: int = 0       # 0 = left / single-col, 1 = right, -1 = full-width
 
     # Filled by classifier
     heading_score: float = 0.0

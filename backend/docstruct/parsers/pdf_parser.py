@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as _dt
 import statistics
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import fitz  # type: ignore[import]  # pymupdf
 
@@ -37,10 +37,6 @@ class PdfParser(BaseParser):
     def _extract_text_for_pages(
         self, doc: "fitz.Document", page_start: int, page_end: int, *, max_chars: int = 15000
     ) -> str:
-        """
-        Extract plain text for the inclusive 1-based page range.
-        Keep output bounded to avoid returning extremely large payloads.
-        """
         start_idx = max(0, page_start - 1)
         end_idx = max(start_idx, min(doc.page_count - 1, page_end - 1))
 
@@ -64,7 +60,6 @@ class PdfParser(BaseParser):
         return joined
 
     def _single_node_fallback(self, doc: "fitz.Document", total_pages: int) -> DocumentTree:
-        """Fallback for truly unstructured documents — returns a single root node."""
         pages = PageRange(
             physical_start=1,
             physical_end=total_pages if total_pages > 0 else 1,
@@ -92,35 +87,95 @@ class PdfParser(BaseParser):
         tree.finalise()
         return tree
 
-    def _assign_levels(self, spans: List[Span], median_font_size: float) -> List[Span]:
+    # ------------------------------------------------------------------
+    # Heading level assignment with false-positive filters
+    # ------------------------------------------------------------------
+
+    def _assign_levels(
+        self,
+        spans: List[Span],
+        median_font_size: float,
+        *,
+        page_widths: Optional[Dict[int, float]] = None,
+        page_heights: Optional[Dict[int, float]] = None,
+    ) -> List[Span]:
         """
         Assign heading levels to spans that pass the heading threshold.
 
-        Level assignment strategy:
-        - Rank unique (font_size, is_bold) combinations descending
-          (larger size first, bold before non-bold at same size)
-        - Map each rank to a level (1 = most prominent), capped at 6
-        - Numbering depth overrides when available
+        Filters (Phase 1d / Problem 3):
+        - Skip email addresses, URLs, very short text
+        - Skip likely metadata (centred text in the top zone of page 1
+          above the first numbered heading)
+        - Apply a stricter score threshold for un-numbered spans
         """
-        threshold = self.config.heading_threshold
+        base_threshold = self.config.heading_threshold
+        strict_threshold = self.config.unnumbered_heading_threshold
         max_words = self.config.max_heading_words
+        min_words = self.config.min_heading_word_count
+        meta_page = self.config.metadata_zone_page
+        meta_frac = self.config.metadata_zone_fraction
 
-        heading_spans = [
-            s for s in spans
-            if s.heading_score >= threshold and s.word_count <= max_words
-        ]
+        first_numbered_y: Optional[float] = None
+        for s in spans:
+            if s.has_numbering and s.heading_score >= base_threshold:
+                first_numbered_y = s.bbox[1]
+                break
 
-        if not heading_spans:
+        page1_height = (page_heights or {}).get(meta_page, 792.0)
+        meta_zone_y = page1_height * meta_frac
+
+        pre_filtered: List[Span] = []
+        for s in spans:
+            text = s.text.strip()
+
+            if "@" in text:
+                continue
+            if text.startswith(("http", "www.", "doi:")):
+                continue
+            if len(text) <= 2:
+                continue
+            if s.word_count < min_words:
+                continue
+            if s.word_count > max_words:
+                continue
+
+            effective_threshold = base_threshold if s.has_numbering else strict_threshold
+            if s.heading_score < effective_threshold:
+                continue
+
+            if (
+                s.page == meta_page
+                and not s.has_numbering
+                and page_widths
+            ):
+                pw = page_widths.get(s.page, 612.0)
+                x_center = (s.bbox[0] + s.bbox[2]) / 2.0
+                page_center = pw / 2.0
+                is_centered = abs(x_center - page_center) < 0.15 * pw
+                in_meta_zone = s.bbox[1] < meta_zone_y
+
+                above_first_numbered = (
+                    first_numbered_y is not None and s.bbox[1] < first_numbered_y
+                )
+                if is_centered and in_meta_zone and above_first_numbered:
+                    continue
+
+            pre_filtered.append(s)
+
+        if not pre_filtered:
             return []
 
+        # ---- style-rank → level mapping ----
         unique_styles: List[Tuple[float, bool]] = sorted(
-            {(s.font_size, s.is_bold) for s in heading_spans},
+            {(s.font_size, s.is_bold) for s in pre_filtered},
             key=lambda t: (t[0], t[1]),
             reverse=True,
         )
-        style_to_level = {style: min(rank, 6) for rank, style in enumerate(unique_styles, start=1)}
+        style_to_level = {
+            style: min(rank, 6) for rank, style in enumerate(unique_styles, start=1)
+        }
 
-        for span in heading_spans:
+        for span in pre_filtered:
             base_level = style_to_level[(span.font_size, span.is_bold)]
 
             if span.has_numbering:
@@ -132,15 +187,22 @@ class PdfParser(BaseParser):
 
             span.assigned_level = base_level
 
-        return heading_spans
+        return pre_filtered
+
+    # ------------------------------------------------------------------
+    # Slow path — heading detection via font / layout signals
+    # ------------------------------------------------------------------
 
     def _slow_path_parse(self, doc: "fitz.Document", total_pages: int) -> DocumentTree:
-        """Heading detection via font/layout signals for PDFs without a TOC."""
         extractor = PdfSpanExtractor(self.file_path)
-        spans = extractor.extract()
+        spans, page_widths = extractor.extract()
 
         if not spans:
             return self._single_node_fallback(doc, total_pages)
+
+        page_heights: Dict[int, float] = {
+            i + 1: float(doc.load_page(i).rect.height) for i in range(doc.page_count)
+        }
 
         font_sizes = [s.font_size for s in spans if s.font_size > 0]
         line_heights = [s.line_height for s in spans if s.line_height > 0]
@@ -150,7 +212,12 @@ class PdfParser(BaseParser):
         detect_numbering(spans)
         score_headings(spans, median_font_size, median_line_height)
 
-        heading_spans = self._assign_levels(spans, median_font_size)
+        heading_spans = self._assign_levels(
+            spans,
+            median_font_size,
+            page_widths=page_widths,
+            page_heights=page_heights,
+        )
 
         candidates = [
             HeadingCandidate(
@@ -179,8 +246,22 @@ class PdfParser(BaseParser):
             nodes=root_nodes,
         )
         tree.finalise()
-        populate_text_for_pdf(tree, spans)
+
+        # Build heading_span → DocNode mapping (non-phantom nodes in DFS
+        # order correspond 1:1 with heading_spans / candidates).
+        real_nodes = [n for n in tree.flat_list() if not n._is_phantom]
+        heading_nodes: List[DocNode]
+        if len(real_nodes) == len(heading_spans):
+            heading_nodes = real_nodes
+        else:
+            heading_nodes = real_nodes[: len(heading_spans)]
+
+        populate_text_for_pdf(tree, spans, heading_spans, heading_nodes)
         return tree
+
+    # ------------------------------------------------------------------
+    # Public entry point
+    # ------------------------------------------------------------------
 
     def parse(self) -> DocumentTree:
         doc = fitz.open(self.file_path)  # type: ignore[arg-type]
@@ -193,7 +274,6 @@ class PdfParser(BaseParser):
             if not toc:
                 return self._slow_path_parse(doc, total_pages)
 
-            # Add front-matter node for pages before first TOC entry (no data loss).
             page_starts = [entry[2] for entry in toc]
             first_start = min(page_starts) if page_starts else 1
             if first_start > 1:
@@ -214,7 +294,6 @@ class PdfParser(BaseParser):
                     )
                 )
 
-            # Pre-compute end pages for each TOC entry using next sibling (same or higher level).
             page_ends: List[int] = []
             for idx, (level, title, page_start) in enumerate(toc):
                 end_page = total_pages
@@ -244,7 +323,6 @@ class PdfParser(BaseParser):
                     children=[],
                 )
 
-                # Stack-based tree construction based on outline levels
                 while stack and stack[-1][0] >= level:
                     stack.pop()
 

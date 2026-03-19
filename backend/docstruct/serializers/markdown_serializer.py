@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import List, Union
 
@@ -41,13 +42,15 @@ def _node_to_md(node: DocNode) -> List[str]:
     lines.append("")
 
     if node.text.strip():
-        lines.append(node.text.strip())
+        lines.append(_render_text_with_images(node.text).strip())
         lines.append("")
 
     # Render structured tables extracted from this node's page range
     for tbl in node.tables:
         if not tbl.markdown:
-            continue
+            # We'll handle fallback rendering further below.
+            pass
+
         # Header line: caption (if any) or generic label, plus provenance
         if tbl.caption:
             header = f"**{tbl.caption}**"
@@ -56,10 +59,32 @@ def _node_to_md(node: DocNode) -> List[str]:
         meta = f"*(p.{tbl.page}, {tbl.extraction_method} strategy)*"
         lines.append(f"{header} {meta}")
         lines.append("")
-        lines.append(tbl.markdown)
-        lines.append("")
 
+        if tbl.is_valid_table and tbl.markdown:
+            lines.append(tbl.markdown)
+            lines.append("")
+            continue
+
+        # Structured markdown wasn't trustworthy; fall back to rendered image.
+        if tbl.path:
+            label = tbl.caption or tbl.table_id
+            lines.append(f"![{label}]({tbl.path})")
+            lines.append("")
+
+        # If we don't have either markdown or an image, we omit representation.
+
+    used_filenames = {m.group(1) for m in IMG_MARKER_RE.finditer(node.text or "")}
+
+    # Only render images not already represented by inline markers.
+    remaining_images = []
     for img in node.images:
+        if not img.path:
+            continue
+        filename = Path(img.path).name
+        if filename not in used_filenames:
+            remaining_images.append(img)
+
+    for img in sorted(remaining_images, key=lambda im: (im.page, im.y0)):
         if img.path:
             label = img.label or img.caption or "image"
             lines.append(f"![{label}]({img.path})")
@@ -84,4 +109,31 @@ def save_markdown(tree: DocumentTree, path: Union[str, Path]) -> None:
     md = to_markdown(tree)
     path = Path(path)
     path.write_text(md, encoding="utf-8")
+
+
+IMG_MARKER_RE = re.compile(r"\{\{IMG:([^|}]*)\|([^|}]*)\|([^}]*)\}\}")
+
+
+def _render_text_with_images(text: str) -> str:
+    """
+    Replace internal image markers inside `node.text` with real markdown images.
+    """
+
+    def _replace(m: re.Match[str]) -> str:
+        filename = (m.group(1) or "").strip()
+        label = (m.group(2) or "").strip()
+        caption = (m.group(3) or "").strip()
+
+        if not filename:
+            return ""
+
+        if not label:
+            label = caption or "image"
+
+        out = f"![{label}](assets/images/{filename})"
+        if caption:
+            out += f"\n*{caption}*"
+        return out
+
+    return IMG_MARKER_RE.sub(_replace, text or "")
 

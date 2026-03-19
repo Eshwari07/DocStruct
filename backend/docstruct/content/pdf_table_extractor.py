@@ -97,16 +97,24 @@ _STRATEGY_CONFIGS: List[Tuple[str, dict]] = [
 def extract_tables_from_pdf(
     tree: DocumentTree,
     file_path: Path,
+    output_dir: Optional[Path] = None,
 ) -> Dict[int, List[Tuple[float, float, float, float]]]:
     """
     Extract tables from every page and attach them as TableBlock objects to
     the appropriate DocNode.
+
+    If `output_dir` is provided, an image for each accepted table bbox will be
+    rendered and the resulting `assets/tables/<table_id>.png` path will be
+    stored on the TableBlock.
 
     Returns a dict mapping physical page number → list of (x0, y0, x1, y1)
     bounding boxes of all found tables.  The image extractor uses this to
     avoid treating table borders as vector diagrams.
     """
     table_bboxes: Dict[int, List[Tuple[float, float, float, float]]] = {}
+
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         plumber_pdf = pdfplumber.open(str(file_path))
@@ -131,7 +139,17 @@ def extract_tables_from_pdf(
                 continue
 
             deduplicated = _deduplicate(raw_tables)
-            qualified = [t for t in deduplicated if _passes_quality(t["data"])]
+            page_width = float(fitz_page.rect.width) if fitz_page is not None else 0.0
+            qualified = [
+                t
+                for t in deduplicated
+                if _passes_quality(
+                    t["data"],
+                    bbox=t["bbox"],
+                    page_width=page_width,
+                    method=t["method"],
+                )
+            ]
             if not qualified:
                 continue
 
@@ -149,8 +167,8 @@ def extract_tables_from_pdf(
                     else ""
                 )
                 headers, rows, md = table_to_markdown_and_parts(table_info["data"])
-                if not md:
-                    continue
+
+                is_valid_table = bool(md)
 
                 block = TableBlock(
                     table_id=table_id,
@@ -158,9 +176,39 @@ def extract_tables_from_pdf(
                     page=page_num,
                     headers=headers,
                     rows=rows,
-                    markdown=md,
+                    markdown=md or "",
                     extraction_method=table_info["method"],
+                    is_valid_table=is_valid_table,
                 )
+
+                # Always render a pixel-accurate table image for accepted tables.
+                if output_dir is not None and fitz_page is not None:
+                    try:
+                        clip = fitz.Rect(bbox)
+                        # Small padding helps keep borders and captions from being
+                        # clipped by sub-pixel rounding.
+                        clip = fitz.Rect(
+                            clip.x0 - 1.0,
+                            clip.y0 - 1.0,
+                            clip.x1 + 1.0,
+                            clip.y1 + 1.0,
+                        ) & fitz_page.rect
+
+                        if clip.width > 0 and clip.height > 0:
+                            mat = fitz.Matrix(2.0, 2.0)
+                            pix = fitz_page.get_pixmap(
+                                matrix=mat, clip=clip, alpha=False
+                            )
+                            img_fname = f"{table_id}.png"
+                            pix.save(str(output_dir / img_fname))
+                            block.path = f"assets/tables/{img_fname}"
+                    except Exception as exc:
+                        logger.debug(
+                            "Failed to render table image %s page=%d: %s",
+                            table_id,
+                            page_num,
+                            exc,
+                        )
 
                 if target is not None:
                     target.tables.append(block)
@@ -177,6 +225,36 @@ def extract_tables_from_pdf(
         fitz_doc.close()
 
     return table_bboxes
+
+
+def _is_multicolumn_layout_artifact(
+    data: List[List[str]],
+    bbox: Tuple[float, float, float, float],
+    page_width: float,
+    method: str,
+) -> bool:
+    """
+    Detect high-likelihood false positives produced when 2-column body text
+    is misinterpreted as a table by pdfplumber 'text'/'mixed' strategies.
+    """
+    # lines strategy tends to be more grid/border-reliable.
+    if method == "lines":
+        return False
+
+    x0, _, x1, _ = bbox
+    if page_width > 0 and (x1 - x0) / page_width > 0.85:
+        # Table bbox spans most of the full page width => likely two columns
+        # stitched together as "columns".
+        return True
+
+    header = data[0] if data else []
+    if header:
+        # Real table headers are short labels. Body prose headers are long.
+        long_headers = sum(1 for c in header if c and len(c) > 60)
+        if long_headers / max(len(header), 1) > 0.5:
+            return True
+
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +421,13 @@ def _has_cross_cell_word_splits(data: List[List[str]]) -> bool:
     return split_rows >= 2
 
 
-def _passes_quality(data: List[List[str]]) -> bool:
+def _passes_quality(
+    data: List[List[str]],
+    *,
+    bbox: Tuple[float, float, float, float],
+    page_width: float,
+    method: str,
+) -> bool:
     if len(data) < _MIN_ROWS:
         return False
     max_cols = max((len(r) for r in data), default=0)
@@ -366,6 +450,12 @@ def _passes_quality(data: List[List[str]]) -> bool:
         header_empty = sum(1 for c in header if not c) / len(header)
         if header_empty >= 0.50:
             return False
+
+    # Final conservative guard for 2-column false positives.
+    if _is_multicolumn_layout_artifact(
+        data=data, bbox=bbox, page_width=page_width, method=method
+    ):
+        return False
     return True
 
 
