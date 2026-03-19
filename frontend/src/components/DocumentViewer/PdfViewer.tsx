@@ -30,8 +30,9 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
     setJobProgress,
   } = useDocStructStore();
 
-  const [zoom, setZoom] = useState(1.2);
+  const [zoom, setZoom] = useState(1.0);
   const [pdfNumPages, setPdfNumPages] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -46,6 +47,18 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setContainerWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
   // Track which page is most visible via IntersectionObserver
   const visiblePagesRef = useRef<Map<number, number>>(new Map());
@@ -197,7 +210,7 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
             </button>
             <button
               className="px-2 py-1 rounded-md border border-slate-700 bg-slate-900/40 hover:bg-slate-900 text-xs"
-              onClick={() => setZoom(1.2)}
+              onClick={() => setZoom(1.0)}
             >
               Reset
             </button>
@@ -208,7 +221,7 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
       {/* Scrollable PDF container — all pages rendered */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-auto bg-slate-950"
+        className="flex-1 overflow-y-auto overflow-x-auto bg-slate-950 min-w-0"
       >
         {isTargetPage && <div className="h-1 bg-amber-500/80" />}
 
@@ -241,11 +254,11 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
                   ref={setPageRef(pageNumber)}
                   data-page-num={pageNumber}
                   id={`pdf-page-${pageNumber}`}
-                  className="w-full flex justify-center py-3"
+                  className="w-full flex justify-center py-3 px-2"
                 >
                   <Page
                     pageNumber={pageNumber}
-                    scale={zoom}
+                    width={containerWidth > 0 ? Math.floor(containerWidth * zoom) : undefined}
                     renderAnnotationLayer={true}
                     renderTextLayer={true}
                   />

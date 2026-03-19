@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from docstruct.core.config import DocStructConfig
 from docstruct.core.schema import DocumentTree, SourceFormat
 from docstruct.parsers.base import BaseParser
 from docstruct.parsers.pdf_parser import PdfParser
@@ -37,10 +38,16 @@ class DocStructPipeline:
         ".ppt": SourceFormat.PPTX,
     }
 
-    def process(self, file_path: str | Path, *, artifact_dir: Optional[Path] = None) -> DocumentTree:
+    def process(
+        self,
+        file_path: str | Path,
+        *,
+        artifact_dir: Optional[Path] = None,
+        config: Optional[DocStructConfig] = None,
+    ) -> DocumentTree:
         path = Path(file_path)
         fmt = self._detect_format(path)
-        parser = self._get_parser(fmt, path)
+        parser = self._get_parser(fmt, path, config=config)
         tree = parser.parse()
         if fmt == SourceFormat.PDF and artifact_dir is not None:
             assets_dir = artifact_dir / "assets"
@@ -58,9 +65,9 @@ class DocStructPipeline:
             raise ValueError(f"Unsupported file format: {suffix or '<no extension>'}")
         return fmt
 
-    def _get_parser(self, fmt: SourceFormat, path: Path) -> BaseParser:
+    def _get_parser(self, fmt: SourceFormat, path: Path, config: Optional[DocStructConfig] = None) -> BaseParser:
         if fmt == SourceFormat.PDF:
-            return PdfParser(path)
+            return PdfParser(path, config=config)
         if fmt == SourceFormat.DOCX:
             return DocxParser(path)
         if fmt == SourceFormat.HTML:
