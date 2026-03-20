@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import datetime as _dt
+import logging
+import re
 import statistics
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import fitz  # type: ignore[import]  # pymupdf
 
@@ -23,6 +25,39 @@ from docstruct.extraction.numbering_detector import detect_numbering, parse_numb
 from docstruct.extraction.tree_builder import build_tree, HeadingCandidate
 from docstruct.content.text_populator import populate_text_for_pdf
 
+logger = logging.getLogger(__name__)
+
+_RULE_IDENTIFIER_RE = re.compile(
+    r"""^(
+        # Regulatory rule identifiers: "SYSC 8.1.1 R", "MAR 1.2.3A G"
+        [A-Z]{2,8}(?:\s+\d+(?:\.\d+){0,4}[A-Za-z]?){1,3}\s*[RGECPS]?\s*$
+        |
+        # Article/Section references: "Article 15(3)", "Section 4.2.1"
+        (?:Article|Section|Clause|Rule|Regulation|Schedule|Annex|Appendix|
+           Part|Paragraph|Sub-paragraph|Chapter|Point)\s+[\dA-Z][\w.\-()]*\s*$
+        |
+        # Numbered legal paragraph: "(1)", "(1)(a)", "1.2.3"
+        \(?\d{1,4}\)?(?:\([a-z]{1,3}\))?\s*$
+        |
+        # Short alphanumeric codes: "§ 42", "§42(1)(b)"
+        §\s*[\d]+(?:\([a-z\d]+\))*\s*$
+        |
+        # Roman numeral only: "i.", "iv.", "xii."
+        [ivxlcdmIVXLCDM]{1,6}\.?\s*$
+    )""",
+    re.VERBOSE,
+)
+
+_MONTH_YEAR_RE = re.compile(
+    r"^(January|February|March|April|May|June|July|August|"
+    r"September|October|November|December)\s+\d{4}$",
+    re.IGNORECASE,
+)
+_STANDALONE_PAGE_NUM_RE = re.compile(r"^\s*-?\s*\d{1,4}\s*-?\s*$")
+_PAGE_OF_RE = re.compile(r"^\s*Page\s+\d+\s+(of\s+\d+)?\s*$", re.IGNORECASE)
+_ROMAN_NUM_RE = re.compile(r"^\s*[ivxlcdm]{1,8}\s*$", re.IGNORECASE)
+_EXCESS_BLANK_RE = re.compile(r"\n{3,}")
+
 
 class PdfParser(BaseParser):
     """
@@ -33,10 +68,69 @@ class PdfParser(BaseParser):
     def __init__(self, file_path: Path, config: Optional[DocStructConfig] = None):
         super().__init__(file_path)
         self.config = config or DocStructConfig()
+        self._header_footer_lines: Optional[Set[str]] = None
+
+    def _detect_header_footer_lines(self, doc: "fitz.Document") -> Set[str]:
+        """Scan first pages to find lines repeating across 3+ pages (running headers/footers)."""
+        from collections import Counter
+        scan_count = min(5, doc.page_count)
+        line_page_counts: Counter[str] = Counter()
+
+        for page_idx in range(scan_count):
+            try:
+                page = doc.load_page(page_idx)
+                raw = page.get_text("text") or ""
+            except Exception:
+                continue
+
+            seen_on_page: set[str] = set()
+            for line in raw.split("\n"):
+                stripped = line.strip()
+                if not stripped or len(stripped) > 150:
+                    continue
+                words = stripped.split()
+                if len(words) > 5 and any(
+                    c in stripped for c in ".!?;"
+                ):
+                    continue
+                if stripped not in seen_on_page:
+                    seen_on_page.add(stripped)
+                    line_page_counts[stripped] += 1
+
+        return {line for line, count in line_page_counts.items() if count >= 3}
+
+    def _strip_headers_footers(self, text: str) -> str:
+        """Remove detected repeating header/footer lines and common artefact patterns."""
+        hf = self._header_footer_lines or set()
+        cleaned: list[str] = []
+        for line in text.split("\n"):
+            stripped = line.strip()
+            if stripped in hf:
+                continue
+            if stripped.startswith(("http://", "https://", "www.")):
+                parts = stripped.split()
+                if len(parts) <= 3:
+                    continue
+            if _MONTH_YEAR_RE.match(stripped):
+                continue
+            if _STANDALONE_PAGE_NUM_RE.match(stripped):
+                continue
+            if _PAGE_OF_RE.match(stripped):
+                continue
+            if _ROMAN_NUM_RE.match(stripped) and len(stripped.strip()) <= 8:
+                continue
+            cleaned.append(line)
+
+        result = "\n".join(cleaned)
+        result = _EXCESS_BLANK_RE.sub("\n\n", result)
+        return result.strip()
 
     def _extract_text_for_pages(
         self, doc: "fitz.Document", page_start: int, page_end: int, *, max_chars: int = 15000
     ) -> str:
+        if self._header_footer_lines is None:
+            self._header_footer_lines = self._detect_header_footer_lines(doc)
+
         start_idx = max(0, page_start - 1)
         end_idx = max(start_idx, min(doc.page_count - 1, page_end - 1))
 
@@ -55,6 +149,7 @@ class PdfParser(BaseParser):
                 break
 
         joined = "\n\n".join(chunks).strip()
+        joined = self._strip_headers_footers(joined)
         if len(joined) > max_chars:
             joined = joined[:max_chars].rstrip()
         return joined
@@ -139,6 +234,9 @@ class PdfParser(BaseParser):
             if s.word_count > max_words:
                 continue
 
+            if _RULE_IDENTIFIER_RE.match(text):
+                continue
+
             effective_threshold = base_threshold if s.has_numbering else strict_threshold
             if s.heading_score < effective_threshold:
                 continue
@@ -186,6 +284,14 @@ class PdfParser(BaseParser):
                     continue
 
             span.assigned_level = base_level
+
+        for span in pre_filtered:
+            if (
+                span.word_count == 1
+                and not span.has_numbering
+                and span.font_size <= median_font_size * 1.25
+            ):
+                span.assigned_level = max(span.assigned_level, 3)
 
         return pre_filtered
 
@@ -260,6 +366,38 @@ class PdfParser(BaseParser):
         return tree
 
     # ------------------------------------------------------------------
+    # Parent text deduplication (fast path only)
+    # ------------------------------------------------------------------
+
+    def _trim_parent_text_ranges(self, doc: "fitz.Document", nodes: List[DocNode]) -> None:
+        """Trim parent node text so it only contains intro text before first child."""
+        for node in nodes:
+            if node.children and node.pages:
+                child_starts = [
+                    c.pages.physical_start
+                    for c in node.children
+                    if c.pages
+                ]
+                if not child_starts:
+                    self._trim_parent_text_ranges(doc, node.children)
+                    continue
+
+                first_child_page = min(child_starts)
+                intro_end = first_child_page - 1
+
+                if intro_end >= node.pages.physical_start:
+                    node.text = self._extract_text_for_pages(
+                        doc, node.pages.physical_start, intro_end
+                    )
+                else:
+                    if node.depth == 1 and node.text:
+                        node.text = node.text[:500].rstrip()
+                    else:
+                        node.text = ""
+
+            self._trim_parent_text_ranges(doc, node.children)
+
+    # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
 
@@ -268,15 +406,24 @@ class PdfParser(BaseParser):
         try:
             total_pages = doc.page_count
 
-            toc: List[Tuple[int, str, int]] = doc.get_toc(simple=True) or []
+            raw_toc: List[Tuple[int, str, int]] = doc.get_toc(simple=True) or []
             root_nodes: List[DocNode] = []
 
-            if not toc:
+            # Change A — Sanitise TOC entries
+            toc = [
+                (level, title, page_start)
+                for (level, title, page_start) in raw_toc
+                if page_start >= 1 and title and title.strip()
+            ]
+
+            if len(toc) < self.config.fast_path_min_headings:
                 return self._slow_path_parse(doc, total_pages)
 
             page_starts = [entry[2] for entry in toc]
             first_start = min(page_starts) if page_starts else 1
-            if first_start > 1:
+
+            # Change C — Only add front-matter if more than 1 page precedes TOC
+            if first_start > 2:
                 fm_pages = PageRange(
                     physical_start=1,
                     physical_end=first_start - 1,
@@ -294,19 +441,32 @@ class PdfParser(BaseParser):
                     )
                 )
 
+            # Change B — Improved page end calculation
             page_ends: List[int] = []
             for idx, (level, title, page_start) in enumerate(toc):
                 end_page = total_pages
                 for lookahead_idx in range(idx + 1, len(toc)):
                     la_level, _, la_page = toc[lookahead_idx]
                     if la_level <= level:
-                        end_page = max(page_start, la_page - 1)
+                        if la_page > page_start:
+                            end_page = la_page - 1
+                        else:
+                            end_page = page_start
                         break
+                end_page = max(page_start, min(end_page, total_pages))
                 page_ends.append(end_page)
 
             stack: List[tuple[int, DocNode]] = []
 
             for (level, title, page_start), page_end in zip(toc, page_ends):
+                # Change D — Validate PageRange
+                if page_start < 1 or page_end < page_start:
+                    logger.warning(
+                        "Skipping invalid TOC entry '%s': pages %d–%d",
+                        title, page_start, page_end,
+                    )
+                    continue
+
                 pages = PageRange(
                     physical_start=page_start,
                     physical_end=page_end,
@@ -342,6 +502,7 @@ class PdfParser(BaseParser):
                 nodes=root_nodes,
             )
             tree.finalise()
+            self._trim_parent_text_ranges(doc, root_nodes)
             return tree
         finally:
             doc.close()

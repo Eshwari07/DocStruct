@@ -48,12 +48,14 @@ def _assign_columns(
         n_cols = _detect_columns(pspans, pw)
         if n_cols < 2:
             continue
-        half = pw / 2.0
+        mid = pw * 0.52
         for s in pspans:
             span_width = s.bbox[2] - s.bbox[0]
-            if span_width > pw * 0.7:
-                s.column = -1  # full-width (e.g. section heading spanning both columns)
-            elif (s.bbox[0] + s.bbox[2]) / 2.0 < half:
+            if span_width > pw * 0.65:
+                s.column = -1
+            elif s.bbox[0] < pw * 0.08:
+                s.column = 0
+            elif (s.bbox[0] + s.bbox[2]) / 2.0 < mid:
                 s.column = 0
             else:
                 s.column = 1

@@ -18,6 +18,8 @@ DocStruct extracts hierarchical document structure (headings, sections, tables, 
 
 ## Architecture
 
+For deeper implementation details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 - **Backend**: FastAPI + DocStruct processing pipeline (`backend/`)
 - **Frontend**: React + Vite (`frontend/`)
 - **Languages**: Python (55.9%), TypeScript (43.4%)
@@ -61,7 +63,8 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -U pip
 .venv\Scripts\pip install -r requirements.txt
 copy .env.example .env
-# Edit .env and set your OPENROUTER_API_KEY (required for VLM path)
+# Edit `backend/.env` and set your `OPENROUTER_API_KEY` (required for VLM path).
+# Security note: do NOT commit `backend/.env` to GitHub. Keep only `backend/.env.example`.
 .venv\Scripts\uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 

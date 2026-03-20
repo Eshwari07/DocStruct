@@ -104,8 +104,27 @@ class DocStructPipeline:
             tree = parser.parse()
 
             if fmt == SourceFormat.PDF and artifact_dir is not None:
+                assets_images_dir = artifact_dir / "assets" / "images"
                 tables_dir = artifact_dir / "assets" / "tables"
-                extract_tables_from_pdf(tree, path, output_dir=tables_dir)
+
+                vlm_table_count = sum(len(n.tables) for n in tree.flat_list())
+
+                if vlm_table_count > 0:
+                    logger.debug(
+                        "VLM found %d tables; skipping pdfplumber table extraction.",
+                        vlm_table_count,
+                    )
+                    extract_images_from_pdf(
+                        tree, path, assets_images_dir, table_bboxes={}
+                    )
+                else:
+                    logger.debug("VLM found no tables; running pdfplumber as fallback.")
+                    table_bboxes = extract_tables_from_pdf(
+                        tree, path, output_dir=tables_dir
+                    )
+                    extract_images_from_pdf(
+                        tree, path, assets_images_dir, table_bboxes=table_bboxes
+                    )
 
             return tree
 

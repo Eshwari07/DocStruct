@@ -1,0 +1,154 @@
+{
+  "document": {
+    "source_file": "upload.pdf",
+    "source_format": "pdf",
+    "total_pages": 9,
+    "extracted_at": "2026-03-20T15:30:32.565189+00:00",
+    "extraction_path": "vlm",
+    "nodes": [
+      {
+        "id": "0001",
+        "section_id": "1",
+        "depth": 1,
+        "node_type": "root",
+        "title": "CHAPTER",
+        "text": "",
+        "pages": {
+          "physical_start": 3,
+          "physical_end": 5,
+          "logical_start": null,
+          "logical_end": null
+        },
+        "confidence": 1,
+        "images": [],
+        "tables": [],
+        "children": [
+          {
+            "id": "0002",
+            "section_id": "1.1",
+            "depth": 2,
+            "node_type": "child",
+            "title": "SYSC 8 Outsourcing",
+            "text": "## Application to a common platform firm\n\nFor a **common platform firm**:  \n(1) [deleted]  \n(2) the **rules** and **guidance** apply as set out in the table below:\n\n| Subject                                         | Applicable rule or guidance                                     |\n|-------------------------------------------------|---------------------------------------------------------------|\n| General requirements                            | SYSC 8.1.1R, SYSC 8.1.2G, SYSC 8.1.3G                         |\n| Scope of critical and important operational functions | SYSC 8.1.4AR, SYSC 8.1.5R                                     |\n| Outsourcing critical or important operational functions | SYSC 8.1.6-AR to SYSC 8.1.8R, SYSC 8.1.9R, SYSC              |\n|                                                 | 8.1.10R, SYSC 8.1.11-AR, SYSC 8.1.11-BR, SYSC 8.1.11-CG, SYSC 8.1.12G |\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Application to an MiFID optional exemption firm and to a third country firm\n\nFor a **MiFID optional exemption firm** and a **third country firm**:  \n(1) the **rules** and **guidance** in this chapter apply to them as if they were **rules** or as **guidance** in accordance with SYSC 1 Annex 1 3.2CR(1).  \n(2) [deleted]  \n\n## General requirements\n\nA **common platform firm** must:  \n(1) when relying on a third party for the performance of operational functions which are critical for the performance of **regulated activities**, **listed activities** or **ancillary services** (in this chapter “relevant services and activities”) on a continuous and satisfactory basis, ensure that it takes reasonable steps to avoid undue additional operational risk; and  \n(2) not undertake the **outsourcing** of important operational functions in such a way as to impair materially:  \n   (a) the quality of its internal control; and  \n   (b) the ability of the **FCA** to monitor the firm’s compliance with all obligations under the **regulatory system** and, if different, of a **competent authority** to monitor\nOther firms should take account of the outsourcing rule (SYSC 8.1.1 R) as if it were guidance (and as if should appeared in that rule instead of must) as explained in SYSC 1 Annex 1 3.3R(1).\n\nThe application of SYSC 8.1 to relevant services and activities (see SYSC 1.1 R (1)) is limited by SYSC 1 Annex 1 (Part 2) (Application of the common platform requirements).\n\nSYSC 4.1.1 R requires a firm to have effective processes to identify, manage, monitor and report risks and internal control mechanisms. Except in relation to those functions described in SYSC 8.1.5R, where a firm relies on a third party for the performance of operational functions which are not critical or important for the performance of relevant services and activities (see SYSC 8.1.1 R (1)) on a continuous and satisfactory basis, it should take into account, in a manner that is proportionate given the nature, scale and complexity of the outsourcing, the rules in this section in complying with that requirement.\n\n**Scope of critical and important operational functions**\n\nFor the purposes of this chapter an operational function is regarded as critical or important if a defect or failure in its performance would materially impair the continuing compliance of a firm (other than a common platform firm) with the conditions and obligations of its authorisation or its other obligations under the regulatory system, or its financial performance, or the soundness or the continuity of its relevant services and activities.\n\nFor the purposes of this chapter, an operational function is regarded as critical or important if a defect or failure in its performance would materially impair the continuing compliance of a common platform firm with the conditions and obligations of its authorisation or its other obligations under the UK law on markets in financial instruments, or its financial performance, or the soundness or the continuity of its designated investment business.\n\nFor a common platform firm and without prejudice to the status of any other function, the following functions will not be considered as critical or important for the purposes of this chapter:\n\n(1)  the provision to the firm of advisory services, and other services which do not form part of the relevant services and activities of the firm, including the provision of legal advice to the firm, the training of personnel of the firm, billing services and the security of the firm’s premises and personnel;  \n\n(2)  the purchase of standardised services, including market information services and the provision of price feeds;  \n\n(3)\n\nSYSC 8.1.5A *(G)*\nOther **firms** should take account of the critical functions rules (SYSC 8.1.4 R and SYSC 8.1.5 R) as if they were guidance (and as if should appeared in those rules instead of must) as explained in SYSC 1 Annex 1.3.3R(1).",
+            "pages": {
+              "physical_start": 3,
+              "physical_end": 5,
+              "logical_start": null,
+              "logical_end": null
+            },
+            "confidence": 1,
+            "images": [
+              {
+                "image_id": "",
+                "label": "",
+                "caption": "",
+                "path": "assets/images/p3_vec_1.png",
+                "page": 3,
+                "image_type": "vector"
+              },
+              {
+                "image_id": "",
+                "label": "",
+                "caption": "SYSC 8 Outsourcing www.handbook.fca.org.uk December 2025",
+                "path": "assets/images/p4_vec_1.png",
+                "page": 4,
+                "image_type": "vector"
+              },
+              {
+                "image_id": "",
+                "label": "",
+                "caption": "SYSC 8 Outsourcing www.handbook.fca.org.uk December 2025",
+                "path": "assets/images/p5_vec_1.png",
+                "page": 5,
+                "image_type": "vector"
+              }
+            ],
+            "tables": [
+              {
+                "table_id": "p4_t1",
+                "caption": "",
+                "page": 4,
+                "headers": [
+                  "Subject",
+                  "Applicable rule or guidance"
+                ],
+                "rows": [
+                  [
+                    "General requirements",
+                    "SYSC 8.1.1R, SYSC 8.1.2G, SYSC 8.1.3G"
+                  ],
+                  [
+                    "Scope of critical and important operational functions",
+                    "SYSC 8.1.4AR, SYSC 8.1.5R"
+                  ],
+                  [
+                    "Outsourcing critical or important operational functions",
+                    "SYSC 8.1.6-AR to SYSC 8.1.8R, SYSC 8.1.9R, SYSC"
+                  ],
+                  [
+                    "",
+                    "8.1.10R, SYSC 8.1.11-AR, SYSC 8.1.11-BR, SYSC 8.1.11-CG, SYSC 8.1.12G"
+                  ]
+                ],
+                "markdown": "| Subject                                         | Applicable rule or guidance                                     |\n|-------------------------------------------------|---------------------------------------------------------------|\n| General requirements                            | SYSC 8.1.1R, SYSC 8.1.2G, SYSC 8.1.3G                         |\n| Scope of critical and important operational functions | SYSC 8.1.4AR, SYSC 8.1.5R                                     |\n| Outsourcing critical or important operational functions | SYSC 8.1.6-AR to SYSC 8.1.8R, SYSC 8.1.9R, SYSC              |\n|                                                 | 8.1.10R, SYSC 8.1.11-AR, SYSC 8.1.11-BR, SYSC 8.1.11-CG, SYSC 8.1.12G |",
+                "image_path": ""
+              }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "0003",
+        "section_id": "2",
+        "depth": 1,
+        "node_type": "root",
+        "title": "Outsourcing critical or important operational functions",
+        "text": "SYSC 8.1.6 *(R)*\nIf a **firm** (other than a common platform firm) outsources critical or important operational functions or any relevant services and activities, it remains fully responsible for discharging all of its obligations under the regulatory system and must comply, in particular, with the following conditions:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n(1)  the outsourcing must not result in the delegation by senior personnel of their responsibility;\n\n(2)  the relationship and obligations of the **firm** towards its clients under the regulatory system must not be altered;\n\n(3)  the conditions with which the **firm** must comply in order to be authorised, and to remain so, must not be undermined;\n\n(4)  none of the other conditions subject to which the **firm**’s authorisation was granted must be removed or modified.\n\nSYSC 8.1.6-A *(R)*\nIf a common platform firm outsources critical or important operational functions, it remains fully responsible for discharging all of its obligations under the UK law on markets in financial instruments and must comply with the following conditions:\n\n(1)  the outsourcing must not result in the delegation by senior management of their responsibility;\n\n(2)  the relationship and obligations of the **firm** towards its clients under the UK law on markets in financial instruments must not be altered;\n\n(3)  the conditions with which the **firm** must comply in order to be authorised, and to remain so, must not be undermined;\n\n(4)  none of the other conditions subject to which the **firm**’s authorisation was granted must be removed or modified.\n\nSYSC 8.1.6A *(G)*\nA **UCITS** investment firm should take account of the provisions that apply to a common platform firm in relation to its MiFID business in accordance with SYSC 8.1-2G.\n\nSYSC 8.1.7 *(R)*\nA common platform firm must exercise due skill and care and diligence when entering into, managing or terminating any arrangement for the outsourcing to a service provider of critical or important operational functions or of any relevant services and activities.\n\nSYSC 8.1.8 *(R)*\nA common platform firm must in particular take the necessary steps to ensure that the following conditions are satisfied:\n\n(1)\n\nthe service provider must have the ability, capacity, appropriate organisational structure supporting the performance of the **outsourced** functions, and any authorisation required by law to perform the **outsourced** functions, services or activities reliably and professionally;  \n\n(2)  \nthe service provider must carry out the **outsourced** services effectively, and in compliance with applicable laws and regulatory requirements, and to this end the **firm** must establish methods for assessing the standard of performance of the service provider and for reviewing on an ongoing basis the services provided by the service provider;  \n\n(3)  \nthe service provider must properly supervise the carrying out of the **outsourced** functions, and adequately manage the risks associated with the outsourcing;  \n\n(4)  \nappropriate action must be taken if it appears that the service provider may not be carrying out the functions effectively and in compliance with applicable laws and regulatory requirements;  \n\n(5)  \nthe **firm** must effectively supervise the **outsourced** functions or services and manage the risks associated with the outsourcing, and to this end the **firm** must retain the necessary expertise and resources to supervise the **outsourced** functions effectively and to manage those risks;  \n\n(6)  \nthe service provider must disclose to the **firm** any development that may have a material impact on its ability to carry out the **outsourced** functions effectively and in compliance with applicable laws and regulatory requirements;  \n\n(7)  \nthe **firm** must be able to terminate the arrangement for the outsourcing where necessary, with immediate effect when this is in the interest of its clients, without detriment to the continuity and quality of its provision of services to clients;  \n\n(8)  \nthe service provider must co-operate with the **FCA** and any other relevant **competent authority** in connection with the **outsourced** activities;  \n\n(9)  \nthe **firm**, its auditors, the **FCA** and any other relevant **competent authority** must have effective access to data related to the **outsourced** activities, as well as to the business premises of the service provider, where necessary for the purpose of effective oversight in accordance with this provision; and the **FCA** and any other relevant **competent authority** must be able to exercise those rights of access;  \n\n(10)  \nthe service provider must protect any confidential information relating to the **firm** and its clients;  \n\n(11)\n\n(12) the **firm** must ensure that the continuity and quality of the **outsourced** functions or services are maintained also in the event of termination of the outsourcing either by transferring the **outsourced** functions or services to another third party or by performing them itself.\n\nSYSC 8.1.9 R\nA **common platform firm** must ensure that the respective rights and obligations of the **firm** and of the service provider are clearly allocated and set out in a written agreement. In particular, the **firm** must keep its instruction and termination rights, its rights of information, and its right to inspections and access to books and premises. The agreement must ensure that outsourcing by the service provider only takes place with the **firm**'s consent in writing.\n\nSYSC 8.1.10 R\nIf a **common platform firm**, and the service provider are members of the same group, the **firm** may, for the purpose of complying with SYSC 8.1.6-AR, SYSC 8.1.7 R to SYSC 8.1.10R, SYSC 8.1.11-BR and SYSC 8.1.11-CG, take into account the extent to which the **common platform firm** controls the service provider or has the ability to influence its actions.\n\nSYSC 8.1.11 R\nA **firm** (other than a **common platform firm**) must make available on request to the **FCA** all information necessary to enable the **FCA** to supervise the compliance of the performance of the **outsourced** activities with the requirements of the **regulatory system**.\n\nSYSC 8.1.11-A R\nA **common platform firm** must make available on request to the **FCA** all information necessary to enable the **FCA** to supervise the compliance of the performance of the **outsourced** activities with the requirements of the **UK law on markets in financial instruments**.\n\nSYSC 8.1.11-B R\nIn addition to the requirements in SYSC 8.1.6-AR, SYSC 8.1.7 R to SYSC 8.1.10R and SYSC 8.1.11-AR, where a **common platform firm** **outsources** functions related to portfolio management provided to clients to a service provider located in a third country, the **firm** must ensure that the following conditions are satisfied:\n\n(1) the service provider is authorised or registered in its home jurisdiction to provide that service and is effectively supervised by a **regulatory body** in that third country; and  \n\n(2) there is an appropriate cooperation agreement between the **FCA** and the **regulatory body** of the service provider.\n\nSYSC 8.1.11-C G\nFor the purposes of the cooperation agreement referred to in SYSC 8.1.11-BR(2):\n\n(1) If the **FCA** enters into such agreement with a **regulatory body** in a third country, the **FCA** would include provisions to:\n\n(a) obtain on request the information necessary to carry out their supervisory tasks pursuant to the **UK law on markets in financial instruments**;\n\n(b) obtain access to the documents relevant for the performance of their supervisory duties maintained in the **third country**;\n\n(c) receive information from the **regulatory body** in the **third country** as soon as\n(2) The **FCA** publishes on its website a list of the cooperation agreements with **regulatory bodies** in third countries.\n\n[Note: The list of FCA's cooperation agreements with regulatory bodies in third countries can be found at: https://www.fca.org.uk/publication/corporate/outsourcing-portfolio-management-list-cooperation-agreements-2018.pdf]\n\nSYSC 8.1.11A G\n\nOther firms should take account of the outsourcing of important operational functions rules (SYSC 8.1.7 R to SYSC 8.1.11 R) as if they were guidance (and as if should appeared in those rules instead of must) as explained in SYSC 1 Annex 1 3.3R(1).\n\nSYSC 8.1.12 G\n\nAs SUP 15.3.8 G explains, a firm should notify the **FCA** when it intends to rely on a third party for the performance of operational functions which are critical or important for the performance of relevant services and activities on a continuous and satisfactory basis.\n\n### Additional requirements for a management company\n\nSYSC 8.1.13 R\n\nA management company must retain the necessary resources and expertise so as to monitor effectively the activities carried out by third parties on the basis of an arrangement with the firm, especially with regard to the management of the risk associated with those arrangements.\n\n[Note: article 5(2) of the UCITS implementing Directive]\n\nSYSC 8.1.14 G\n\nA management company should be aware that SUP 15.8.6 R (Delegation by UCITS management companies) and COLL 6.6.15A R (Committees and delegations) contain requirements implementing article 13 of the UCITS Directive in relation to delegation that will apply to it.",
+        "pages": {
+          "physical_start": 6,
+          "physical_end": 9,
+          "logical_start": null,
+          "logical_end": null
+        },
+        "confidence": 1,
+        "images": [
+          {
+            "image_id": "",
+            "label": "",
+            "caption": "SYSC 8 Outsourcing www.handbook.fca.org.uk December 2025",
+            "path": "assets/images/p6_vec_1.png",
+            "page": 6,
+            "image_type": "vector"
+          },
+          {
+            "image_id": "",
+            "label": "",
+            "caption": "SYSC 8 Outsourcing www.handbook.fca.org.uk December 2025",
+            "path": "assets/images/p7_vec_1.png",
+            "page": 7,
+            "image_type": "vector"
+          },
+          {
+            "image_id": "",
+            "label": "",
+            "caption": "SYSC 8 Outsourcing www.handbook.fca.org.uk December 2025",
+            "path": "assets/images/p8_vec_1.png",
+            "page": 8,
+            "image_type": "vector"
+          },
+          {
+            "image_id": "",
+            "label": "",
+            "caption": "",
+            "path": "assets/images/p9_vec_1.png",
+            "page": 9,
+            "image_type": "vector"
+          }
+        ],
+        "tables": [],
+        "children": []
+      }
+    ]
+  }
+}

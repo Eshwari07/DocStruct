@@ -1,5 +1,16 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional, Tuple
+
+
+class DocType(str, Enum):
+    AUTO = "auto"
+    LEGAL = "legal"
+    ACADEMIC = "academic"
+    FINANCIAL = "financial"
+    TECHNICAL = "technical"
+    FORM = "form"
+    GENERAL = "general"
 
 
 @dataclass
@@ -37,4 +48,7 @@ class DocStructConfig:
 
     # Routing
     fast_path_min_headings: int = 2
+
+    # Document type (VLM prompt routing)
+    doc_type: DocType = DocType.AUTO
 
